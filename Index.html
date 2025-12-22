@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>JEE Full Mock Test 🌙</title>
+
+<style>
+body {
+  font-family: Arial;
+  margin: 10px;
+  background:#0f1220;
+  color:#eaeaff;
+}
+.topbar {
+  display:flex;
+  justify-content:space-between;
+  padding:10px;
+  background:#161a35;
+  border-bottom:2px solid #7c7cff;
+}
+.timer { color:#9fa8ff; font-weight:bold; }
+img {
+  width:100%;
+  border:2px solid #333;
+  border-radius:6px;
+  margin-bottom:10px;
+}
+.option {
+  width:100%;
+  padding:12px;
+  margin:6px 0;
+  background:#1c2045;
+  color:#eaeaff;
+  border:1px solid #444;
+  border-radius:6px;
+}
+.selected { background:#2436ff; border:2px solid #7c7cff; }
+button {
+  padding:10px;
+  margin:5px;
+  border:none;
+  border-radius:6px;
+  background:#5a63ff;
+  color:white;
+  font-weight:bold;
+}
+.panel {
+  display:grid;
+  grid-template-columns:repeat(10,1fr);
+  gap:6px;
+}
+.qbtn {
+  background:#2a2f66;
+  border:1px solid #444;
+  color:white;
+  padding:8px;
+  border-radius:5px;
+}
+.answered { background:#2ecc71; }
+.marked { background:#f39c12; }
+.skipped { background:#555; }
+</style>
+</head>
+
+<body>
+
+<h2>🗝️ Enter Answer Key (75 answers)</h2>
+<p>Format: <b>A B C D ...</b></p>
+<textarea id="keyInput" rows="4" style="width:100%;"></textarea><br><br>
+<button onclick="startTest()">▶️ Start Test</button>
+
+<script>
+/* ---------- FIXED CONFIG ---------- */
+const TOTAL = 3;
+
+// q1.jpg to q75.jpg
+const images = Array.from({length: TOTAL}, (_,i)=>`q${i+1}.jpg`);
+
+// Section mapping (LOCKED)
+const sections = Array.from({length: TOTAL}, (_,i)=>{
+  if(i < 25) return "Physics";
+  if(i < 50) return "Chemistry";
+  return "Maths";
+});
+
+/* ---------- STATE ---------- */
+let key=[], answers=[], state=[], current=0;
+
+/* ---------- START ---------- */
+function startTest(){
+  key = document.getElementById("keyInput").value.trim().toUpperCase().split(/\s+/);
+  if(key.length !== TOTAL){
+    alert("❌ Answer key must have exactly 75 answers.");
+    return;
+  }
+
+  answers = Array(TOTAL).fill(null);
+  state = Array(TOTAL).fill("not");
+
+  document.body.innerHTML = `
+    <div class="topbar">
+      <b>📘 JEE FULL MOCK</b>
+      <div class="timer" id="time">⏱️ 03:00:00</div>
+    </div>
+
+    <h3 id="qno"></h3>
+    <p id="section"></p>
+    <img id="qimg">
+    <div id="options"></div>
+
+    <button onclick="prev()">⬅️</button>
+    <button onclick="next()">➡️</button>
+    <button onclick="mark()">🟨 Mark</button>
+    <button onclick="skip()">⏭️ Skip</button>
+    <button onclick="finish()">🏁 Finish</button>
+
+    <h4>📍 Question Panel</h4>
+    <div class="panel" id="panel"></div>
+  `;
+
+  startTimer();
+  load();
+}
+
+/* ---------- TIMER ---------- */
+let t = 3*60*60;
+function startTimer(){
+  setInterval(()=>{
+    let h=Math.floor(t/3600), m=Math.floor((t%3600)/60), s=t%60;
+    document.getElementById("time").innerText =
+      `⏱️ ${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
+    if(t>0) t--;
+  },1000);
+}
+
+/* ---------- TEST ---------- */
+function load(){
+  document.getElementById("qno").innerText = `Question ${current+1} / 75`;
+  document.getElementById("section").innerText = `📚 ${sections[current]}`;
+  document.getElementById("qimg").src = images[current];
+
+  let html="";
+  ["A","B","C","D"].forEach((o,i)=>{
+    html+=`<button class="option ${answers[current]==i?"selected":""}"
+      onclick="select(${i})">${o}</button>`;
+  });
+  document.getElementById("options").innerHTML=html;
+  buildPanel();
+}
+
+function select(i){ answers[current]=i; state[current]="answered"; load(); }
+function next(){ if(current<74){ current++; load(); } }
+function prev(){ if(current>0){ current--; load(); } }
+function mark(){ state[current]="marked"; next(); }
+function skip(){ state[current]="skipped"; next(); }
+function go(i){ current=i; load(); }
+
+function buildPanel(){
+  let p="";
+  for(let i=0;i<75;i++){
+    p+=`<button class="qbtn ${state[i]}" onclick="go(${i})">${i+1}</button>`;
+  }
+  document.getElementById("panel").innerHTML=p;
+}
+
+/* ---------- RESULT ---------- */
+function finish(){
+  let score=0, sec={Physics:0,Chemistry:0,Maths:0};
+
+  for(let i=0;i<75;i++){
+    if(answers[i]==null) continue;
+    let user="ABCD"[answers[i]];
+    if(user===key[i]){
+      score+=4;
+      sec[sections[i]]+=4;
+    } else {
+      score-=1;
+      sec[sections[i]]-=1;
+    }
+  }
+
+  document.body.innerHTML=`
+    <h1>📊 Final Result</h1>
+    <p>🏆 Total Score: <b>${score}</b></p>
+
+    <h3>📚 Section-wise Score</h3>
+    <ul>
+      <li>🧲 Physics: ${sec.Physics}</li>
+      <li>🧪 Chemistry: ${sec.Chemistry}</li>
+      <li>➗ Maths: ${sec.Maths}</li>
+    </ul>
+
+    <p>✅ Test structure locked: 25+25+25</p>
+  `;
+}
+</script>
+
+</body>
+</html>

@@ -2,220 +2,233 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>JEE Main Mock Test</title>
+<title>JEE Full Mock Test 🌙</title>
 
 <style>
 body {
-  margin: 0;
-  font-family: Arial, sans-serif;
-  background: #f4f6fb;
+  font-family: Arial;
+  margin: 10px;
+  background:#0f1220;
+  color:#eaeaff;
 }
-
-header {
-  background: #6a00ff;
-  color: white;
-  padding: 10px;
-  text-align: center;
-  font-weight: bold;
+.topbar {
+  display:flex;
+  justify-content:space-between;
+  padding:10px;
+  background:#161a35;
+  border-bottom:2px solid #7c7cff;
 }
-
-.tabs {
-  display: flex;
-  justify-content: center;
-  background: #eee;
-}
-
-.tabs button {
-  flex: 1;
-  padding: 10px;
-  border: none;
-  font-weight: bold;
-}
-
-.main {
-  display: flex;
-}
-
-.left {
-  flex: 3;
-  padding: 15px;
-}
-
-.right {
-  flex: 1;
-  padding: 10px;
-  background: #fff;
-  border-left: 1px solid #ccc;
-}
-
-.palette {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 6px;
-}
-
-.palette button {
-  padding: 6px;
-  border: none;
-  border-radius: 4px;
-}
-
-.notVisited { background: #cfd8dc; }
-.notAnswered { background: #ffcdd2; }
-.answered { background: #c8e6c9; }
-.marked { background: #e1bee7; }
-
+.timer { color:#9fa8ff; font-weight:bold; }
 img {
-  max-width: 100%;
-  margin-bottom: 10px;
+  width:100%;
+  border:2px solid #333;
+  border-radius:6px;
+  margin-bottom:10px;
 }
-
 .option {
-  padding: 10px;
-  margin: 5px 0;
-  background: #e3e6ff;
-  border-radius: 5px;
+  width:100%;
+  padding:12px;
+  margin:6px 0;
+  background:#1c2045;
+  color:#eaeaff;
+  border:1px solid #444;
+  border-radius:6px;
 }
-
-.option.selected {
-  background: #6a00ff;
-  color: white;
+.selected { background:#2436ff; border:2px solid #7c7cff; }
+button {
+  padding:10px;
+  margin:5px;
+  border:none;
+  border-radius:6px;
+  background:#5a63ff;
+  color:white;
+  font-weight:bold;
 }
+.panel {
+  display:grid;
+  grid-template-columns:repeat(10,1fr);
+  gap:6px;
+}
+.qbtn {
+  background:#2a2f66;
+  border:1px solid #444;
+  color:white;
+  padding:8px;
+  border-radius:5px;
+}
+.answered { background:#2ecc71; }
+.marked { background:#f39c12; }
+.skipped { background:#555; }
 
-button.action {
-  padding: 10px;
-  margin: 5px;
+input[type="number"]{
+  width:100%;
+  padding:12px;
+  font-size:16px;
+  background:#1c2045;
+  color:white;
+  border:1px solid #444;
+  border-radius:6px;
 }
 </style>
 </head>
 
 <body>
 
-<header>JEE MAIN MOCK TEST</header>
-
-<div class="tabs">
-  <button onclick="jumpSection(0)">Physics</button>
-  <button onclick="jumpSection(25)">Chemistry</button>
-  <button onclick="jumpSection(50)">Mathematics</button>
-</div>
-
-<div class="main">
-<div class="left">
-
-<h3 id="qTitle"></h3>
-<img id="qImg">
-
-<div id="mcq">
-  <div class="option" onclick="selectOption('A')">A</div>
-  <div class="option" onclick="selectOption('B')">B</div>
-  <div class="option" onclick="selectOption('C')">C</div>
-  <div class="option" onclick="selectOption('D')">D</div>
-</div>
-
-<input type="number" id="integer" style="display:none;width:100%;padding:10px;" placeholder="Enter answer">
-
-<br>
-<button class="action" onclick="saveNext()">Save & Next</button>
-<button class="action" onclick="markReview()">Save & Mark for Review</button>
-<button class="action" onclick="clearResponse()">Clear Response</button>
-
-</div>
-
-<div class="right">
-<div class="palette" id="palette"></div>
-</div>
-</div>
+<h2>🗝️ Enter Answer Key (75 answers)</h2>
+<p>Format: <b>MCQ → A B C D | Integer → numbers</b></p>
+<textarea id="keyInput" rows="4" style="width:100%;"></textarea><br><br>
+<button onclick="startTest()">▶️ Start Test</button>
 
 <script>
+/* ---------- FIXED CONFIG ---------- */
 const TOTAL = 75;
 
-const answerKey = Array(75).fill(null); // Fill later if needed
+const images = Array.from({length: TOTAL}, (_,i)=>`q${i+1}.jpg`);
 
-let q = 0;
-let answers = Array(TOTAL).fill(null);
-let status = Array(TOTAL).fill("notVisited");
+const sections = Array.from({length: TOTAL}, (_,i)=>{
+  if(i < 25) return "Physics";
+  if(i < 50) return "Chemistry";
+  return "Maths";
+});
 
-function qType(i) {
-  let p = (i + 1) % 25; if (p === 0) p = 25;
-  return p <= 20 ? "mcq" : "int";
+/* ---------- HELPERS ---------- */
+function isIntegerQuestion(i){
+  let pos = (i + 1) % 25;
+  if(pos === 0) pos = 25;
+  return pos > 20;
 }
 
-function section(i) {
-  if (i < 25) return "Physics";
-  if (i < 50) return "Chemistry";
-  return "Mathematics";
-}
+/* ---------- STATE ---------- */
+let key=[], answers=[], state=[], current=0;
 
-function render() {
-  document.getElementById("qTitle").innerText =
-    section(q) + " | Question " + (q + 1);
-
-  document.getElementById("qImg").src = "q" + (q + 1) + ".jpg";
-
-  document.getElementById("mcq").style.display =
-    qType(q) === "mcq" ? "block" : "none";
-
-  document.getElementById("integer").style.display =
-    qType(q) === "int" ? "block" : "none";
-
-  document.getElementById("integer").value = answers[q] ?? "";
-
-  document.querySelectorAll(".option").forEach(o => {
-    o.classList.toggle("selected", o.innerText === answers[q]);
-  });
-
-  updatePalette();
-}
-
-function selectOption(o) {
-  answers[q] = o;
-  status[q] = "answered";
-  render();
-}
-
-document.getElementById("integer").oninput = e => {
-  answers[q] = e.target.value === "" ? null : Number(e.target.value);
-  status[q] = answers[q] === null ? "notAnswered" : "answered";
-  updatePalette();
-};
-
-function saveNext() {
-  if (status[q] === "notVisited") status[q] = "notAnswered";
-  q = Math.min(q + 1, TOTAL - 1);
-  render();
-}
-
-function markReview() {
-  status[q] = "marked";
-  q = Math.min(q + 1, TOTAL - 1);
-  render();
-}
-
-function clearResponse() {
-  answers[q] = null;
-  status[q] = "notAnswered";
-  render();
-}
-
-function jumpSection(i) {
-  q = i;
-  render();
-}
-
-function updatePalette() {
-  const p = document.getElementById("palette");
-  p.innerHTML = "";
-  for (let i = 0; i < TOTAL; i++) {
-    let b = document.createElement("button");
-    b.innerText = i + 1;
-    b.className = status[i];
-    b.onclick = () => { q = i; render(); };
-    p.appendChild(b);
+/* ---------- START ---------- */
+function startTest(){
+  key = document.getElementById("keyInput").value.trim().split(/\s+/);
+  if(key.length !== TOTAL){
+    alert("❌ Answer key must have exactly 75 answers.");
+    return;
   }
+
+  answers = Array(TOTAL).fill(null);
+  state = Array(TOTAL).fill("not");
+
+  document.body.innerHTML = `
+    <div class="topbar">
+      <b>📘 JEE FULL MOCK</b>
+      <div class="timer" id="time">⏱️ 03:00:00</div>
+    </div>
+
+    <h3 id="qno"></h3>
+    <p id="section"></p>
+    <img id="qimg">
+    <div id="options"></div>
+
+    <button onclick="prev()">⬅️</button>
+    <button onclick="next()">➡️</button>
+    <button onclick="mark()">🟨 Mark</button>
+    <button onclick="skip()">⏭️ Skip</button>
+    <button onclick="finish()">🏁 Finish</button>
+
+    <h4>📍 Question Panel</h4>
+    <div class="panel" id="panel"></div>
+  `;
+
+  startTimer();
+  load();
 }
 
-render();
+/* ---------- TIMER ---------- */
+let t = 3*60*60;
+function startTimer(){
+  setInterval(()=>{
+    let h=Math.floor(t/3600), m=Math.floor((t%3600)/60), s=t%60;
+    document.getElementById("time").innerText =
+      `⏱️ ${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
+    if(t>0) t--;
+  },1000);
+}
+
+/* ---------- TEST ---------- */
+function load(){
+  document.getElementById("qno").innerText = `Question ${current+1} / 75`;
+  document.getElementById("section").innerText = `📚 ${sections[current]}`;
+  document.getElementById("qimg").src = images[current];
+
+  let html="";
+
+  if(isIntegerQuestion(current)){
+    html = `<input type="number" placeholder="Enter integer answer"
+      value="${answers[current] ?? ""}"
+      oninput="answers[current]=this.value; state[current]=this.value===''?'not':'answered';">`;
+  } else {
+    ["A","B","C","D"].forEach((o,i)=>{
+      html+=`<button class="option ${answers[current]==i?"selected":""}"
+        onclick="select(${i})">${o}</button>`;
+    });
+  }
+
+  document.getElementById("options").innerHTML=html;
+  buildPanel();
+}
+
+function select(i){
+  answers[current]=i;
+  state[current]="answered";
+  load();
+}
+
+function next(){ if(current<74){ current++; load(); } }
+function prev(){ if(current>0){ current--; load(); } }
+function mark(){ state[current]="marked"; next(); }
+function skip(){ state[current]="skipped"; next(); }
+function go(i){ current=i; load(); }
+
+function buildPanel(){
+  let p="";
+  for(let i=0;i<75;i++){
+    p+=`<button class="qbtn ${state[i]}" onclick="go(${i})">${i+1}</button>`;
+  }
+  document.getElementById("panel").innerHTML=p;
+}
+
+/* ---------- RESULT ---------- */
+function finish(){
+  let score=0, sec={Physics:0,Chemistry:0,Maths:0};
+
+  for(let i=0;i<75;i++){
+    if(answers[i]==null || answers[i]==="") continue;
+
+    if(isIntegerQuestion(i)){
+      if(Number(answers[i]) === Number(key[i])){
+        score+=4;
+        sec[sections[i]]+=4;
+      }
+    } else {
+      let user="ABCD"[answers[i]];
+      if(user===key[i]){
+        score+=4;
+        sec[sections[i]]+=4;
+      } else {
+        score-=1;
+        sec[sections[i]]-=1;
+      }
+    }
+  }
+
+  document.body.innerHTML=`
+    <h1>📊 Final Result</h1>
+    <p>🏆 Total Score: <b>${score}</b></p>
+
+    <h3>📚 Section-wise Score</h3>
+    <ul>
+      <li>🧲 Physics: ${sec.Physics}</li>
+      <li>🧪 Chemistry: ${sec.Chemistry}</li>
+      <li>➗ Maths: ${sec.Maths}</li>
+    </ul>
+
+    <p>✅ Integer questions: No negative marking</p>
+  `;
+}
 </script>
 
 </body>

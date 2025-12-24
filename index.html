@@ -1,199 +1,203 @@
 <!DOCTYPE html>
-<html>
-<link rel="icon" href="icon.png">
-<link rel="apple-touch-icon" href="icon.png">
+<html lang="en">
+<head>
 <meta charset="UTF-8">
-<title>JEE Full Mock Test 🌙</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JEE Mock Test</title>
 
 <style>
 body {
-  font-family: Arial;
-  margin: 10px;
-  background:#0f1220;
-  color:#eaeaff;
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #0f1220;
+  color: #fff;
+  text-align: center;
 }
-.topbar {
-  display:flex;
-  justify-content:space-between;
-  padding:10px;
-  background:#161a35;
-  border-bottom:2px solid #7c7cff;
-}
-.timer { color:#9fa8ff; font-weight:bold; }
+.container { padding: 15px; }
 img {
-  width:100%;
-  border:2px solid #333;
-  border-radius:6px;
-  margin-bottom:10px;
+  max-width: 100%;
+  border-radius: 6px;
+  margin-bottom: 10px;
 }
 .option {
-  width:100%;
-  padding:12px;
-  margin:6px 0;
-  background:#1c2045;
-  color:#eaeaff;
-  border:1px solid #444;
-  border-radius:6px;
+  padding: 12px;
+  margin: 6px 0;
+  background: #1c2045;
+  border-radius: 6px;
 }
-.selected { background:#2436ff; border:2px solid #7c7cff; }
+.option.selected {
+  background: #3b5bff;
+}
+input[type="number"] {
+  width: 100%;
+  padding: 12px;
+  font-size: 16px;
+}
 button {
-  padding:10px;
-  margin:5px;
-  border:none;
-  border-radius:6px;
-  background:#5a63ff;
-  color:white;
-  font-weight:bold;
+  padding: 12px;
+  margin: 5px;
+  font-size: 14px;
 }
-.panel {
-  display:grid;
-  grid-template-columns:repeat(10,1fr);
-  gap:6px;
-}
-.qbtn {
-  background:#2a2f66;
-  border:1px solid #444;
-  color:white;
-  padding:8px;
-  border-radius:5px;
-}
-.answered { background:#2ecc71; }
-.marked { background:#f39c12; }
-.skipped { background:#555; }
+.hidden { display: none; }
 </style>
 </head>
 
 <body>
 
-<h2>🗝️ Enter Answer Key (75 answers)</h2>
-<p>Format: <b>A B C D ...</b></p>
-<textarea id="keyInput" rows="4" style="width:100%;"></textarea><br><br>
-<button onclick="startTest()">▶️ Start Test</button>
+<div class="container">
+
+<h3 id="qTitle"></h3>
+
+<img id="qImg" src="">
+
+<!-- MCQ OPTIONS -->
+<div id="options">
+  <div class="option" onclick="selectOption('A')">A</div>
+  <div class="option" onclick="selectOption('B')">B</div>
+  <div class="option" onclick="selectOption('C')">C</div>
+  <div class="option" onclick="selectOption('D')">D</div>
+</div>
+
+<!-- INTEGER INPUT -->
+<input type="number" id="intInput" class="hidden" placeholder="Enter answer">
+
+<br>
+
+<button onclick="markReview()">Mark</button>
+<button onclick="skip()">Skip</button>
+<button onclick="next()">Next</button>
+
+</div>
 
 <script>
-/* ---------- FIXED CONFIG ---------- */
+/* ========= CONFIG ========= */
 const TOTAL = 75;
 
-// q1.jpg to q75.jpg
-const images = Array.from({length: TOTAL}, (_,i)=>`q${i+1}.jpg`);
+/* ===== ANSWER KEY ===== */
+/* MCQ → "A","B","C","D"
+   INTEGER → numbers */
+const answerKey = [
+  // Physics 1–20 MCQ
+  "A","B","C","D","A","B","C","D","A","B",
+  "C","D","A","B","C","D","A","B","C","D",
+  // Physics 21–25 Integer
+  2, 15, 0, 8, 4,
 
-// Section mapping (LOCKED)
-const sections = Array.from({length: TOTAL}, (_,i)=>{
-  if(i < 25) return "Physics";
-  if(i < 50) return "Chemistry";
-  return "Maths";
+  // Chemistry 26–45 MCQ
+  "A","B","C","D","A","B","C","D","A","B",
+  "C","D","A","B","C","D","A","B","C","D",
+  // Chemistry 46–50 Integer
+  6, 1, 12, 0, 9,
+
+  // Maths 51–70 MCQ
+  "A","B","C","D","A","B","C","D","A","B",
+  "C","D","A","B","C","D","A","B","C","D",
+  // Maths 71–75 Integer
+  4, 16, 7, 0, 11
+];
+
+/* ===== STATE ===== */
+let q = 0;
+let answers = Array(TOTAL).fill(null);
+let marked = new Set();
+
+/* ===== HELPERS ===== */
+function sectionName(i) {
+  if (i < 25) return "Physics";
+  if (i < 50) return "Chemistry";
+  return "Mathematics";
+}
+
+function questionType(i) {
+  let pos = (i + 1) % 25;
+  if (pos === 0) pos = 25;
+  return pos <= 20 ? "mcq" : "integer";
+}
+
+/* ===== RENDER ===== */
+function render() {
+  document.getElementById("qTitle").innerText =
+    `${sectionName(q)} | Question ${q + 1}`;
+
+  document.getElementById("qImg").src = `q${q + 1}.jpg`;
+
+  let type = questionType(q);
+  let options = document.getElementById("options");
+  let intInput = document.getElementById("intInput");
+
+  if (type === "mcq") {
+    options.classList.remove("hidden");
+    intInput.classList.add("hidden");
+
+    document.querySelectorAll(".option").forEach(o =>
+      o.classList.remove("selected")
+    );
+
+    if (answers[q]) {
+      document.querySelectorAll(".option").forEach(o => {
+        if (o.innerText === answers[q]) o.classList.add("selected");
+      });
+    }
+  } else {
+    options.classList.add("hidden");
+    intInput.classList.remove("hidden");
+    intInput.value = answers[q] ?? "";
+  }
+}
+
+/* ===== ACTIONS ===== */
+function selectOption(opt) {
+  answers[q] = opt;
+  render();
+}
+
+document.getElementById("intInput").addEventListener("input", e => {
+  answers[q] = e.target.value === "" ? null : Number(e.target.value);
 });
 
-/* ---------- STATE ---------- */
-let key=[], answers=[], state=[], current=0;
+function markReview() {
+  marked.add(q);
+  next();
+}
 
-/* ---------- START ---------- */
-function startTest(){
-  key = document.getElementById("keyInput").value.trim().toUpperCase().split(/\s+/);
-  if(key.length !== TOTAL){
-    alert("❌ Answer key must have exactly 75 answers.");
-    return;
+function skip() {
+  answers[q] = null;
+  next();
+}
+
+function next() {
+  if (q < TOTAL - 1) {
+    q++;
+    render();
+  } else {
+    finish();
   }
-
-  answers = Array(TOTAL).fill(null);
-  state = Array(TOTAL).fill("not");
-
-  document.body.innerHTML = `
-    <div class="topbar">
-      <b>📘 JEE FULL MOCK</b>
-      <div class="timer" id="time">⏱️ 03:00:00</div>
-    </div>
-
-    <h3 id="qno"></h3>
-    <p id="section"></p>
-    <img id="qimg">
-    <div id="options"></div>
-
-    <button onclick="prev()">⬅️</button>
-    <button onclick="next()">➡️</button>
-    <button onclick="mark()">🟨 Mark</button>
-    <button onclick="skip()">⏭️ Skip</button>
-    <button onclick="finish()">🏁 Finish</button>
-
-    <h4>📍 Question Panel</h4>
-    <div class="panel" id="panel"></div>
-  `;
-
-  startTimer();
-  load();
 }
 
-/* ---------- TIMER ---------- */
-let t = 3*60*60;
-function startTimer(){
-  setInterval(()=>{
-    let h=Math.floor(t/3600), m=Math.floor((t%3600)/60), s=t%60;
-    document.getElementById("time").innerText =
-      `⏱️ ${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
-    if(t>0) t--;
-  },1000);
-}
+/* ===== SCORE ===== */
+function finish() {
+  let score = 0;
 
-/* ---------- TEST ---------- */
-function load(){
-  document.getElementById("qno").innerText = `Question ${current+1} / 75`;
-  document.getElementById("section").innerText = `📚 ${sections[current]}`;
-  document.getElementById("qimg").src = images[current];
+  for (let i = 0; i < TOTAL; i++) {
+    let correct = answerKey[i];
+    let given = answers[i];
+    let type = questionType(i);
 
-  let html="";
-  ["A","B","C","D"].forEach((o,i)=>{
-    html+=`<button class="option ${answers[current]==i?"selected":""}"
-      onclick="select(${i})">${o}</button>`;
-  });
-  document.getElementById("options").innerHTML=html;
-  buildPanel();
-}
+    if (given === null) continue;
 
-function select(i){ answers[current]=i; state[current]="answered"; load(); }
-function next(){ if(current<74){ current++; load(); } }
-function prev(){ if(current>0){ current--; load(); } }
-function mark(){ state[current]="marked"; next(); }
-function skip(){ state[current]="skipped"; next(); }
-function go(i){ current=i; load(); }
-
-function buildPanel(){
-  let p="";
-  for(let i=0;i<75;i++){
-    p+=`<button class="qbtn ${state[i]}" onclick="go(${i})">${i+1}</button>`;
-  }
-  document.getElementById("panel").innerHTML=p;
-}
-
-/* ---------- RESULT ---------- */
-function finish(){
-  let score=0, sec={Physics:0,Chemistry:0,Maths:0};
-
-  for(let i=0;i<75;i++){
-    if(answers[i]==null) continue;
-    let user="ABCD"[answers[i]];
-    if(user===key[i]){
-      score+=4;
-      sec[sections[i]]+=4;
+    if (type === "mcq") {
+      if (given === correct) score += 4;
+      else score -= 1;
     } else {
-      score-=1;
-      sec[sections[i]]-=1;
+      if (given === correct) score += 4;
     }
   }
 
-  document.body.innerHTML=`
-    <h1>📊 Final Result</h1>
-    <p>🏆 Total Score: <b>${score}</b></p>
-
-    <h3>📚 Section-wise Score</h3>
-    <ul>
-      <li>🧲 Physics: ${sec.Physics}</li>
-      <li>🧪 Chemistry: ${sec.Chemistry}</li>
-      <li>➗ Maths: ${sec.Maths}</li>
-    </ul>
-
-    <p>✅ Test structure locked: 25+25+25</p>
-  `;
+  alert("Test finished.\nScore: " + score);
 }
+
+/* INIT */
+render();
 </script>
 
 </body>
